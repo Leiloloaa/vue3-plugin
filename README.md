@@ -1,8 +1,11 @@
 # vue3-plugin
 
-- plugin to webp(https://www.npmjs.com/package/plugin-to-webp?activeTab=readme)
+- plugin to webp
   - transform image to webp format
-- plugin to lazyload
+  - npm doc: https://www.npmjs.com/package/plugin-to-webp
+- plugin to lazy
+  - lazy load image、background-image、component
+  - npm doc: https://www.npmjs.com/package/plugin-lazy
 
 
 

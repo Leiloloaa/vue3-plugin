@@ -1,0 +1,1 @@
+import{defineComponent as a,resolveComponent as l,openBlock as r,createBlock as p,withCtx as s,renderSlot as o}from"vue";const u=a({__name:"Lazy",props:{lazy:{type:Boolean,default:!0}},setup(t){return(e,c)=>{const n=l("lazy-component");return t.lazy?(r(),p(n,{key:0},{default:s(()=>[o(e.$slots,"default")]),_:3})):o(e.$slots,"default",{key:1})}}});export{u as default};

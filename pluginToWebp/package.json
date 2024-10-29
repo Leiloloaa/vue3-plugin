@@ -1,6 +1,6 @@
 {
   "name": "plugin-to-webp",
-  "version": "1.0.2",
+  "version": "3.0.0",
   "description": "png 转换 webp 格式图片",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -17,8 +17,6 @@
   "devDependencies": {
     "@vue/tsconfig": "^0.4.0",
     "typescript": "^4.6.4",
-    "vite": "^3.0.7",
-    "vitest": "^0.31.0",
     "unbuild": "^1.2.1"
   },
   "publishConfig": {

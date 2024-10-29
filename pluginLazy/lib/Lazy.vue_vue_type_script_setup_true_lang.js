@@ -1,0 +1,1 @@
+"use strict";const e=require("vue"),l=e.defineComponent({__name:"Lazy",props:{lazy:{type:Boolean,default:!0}},setup(o){return(t,r)=>{const n=e.resolveComponent("lazy-component");return o.lazy?(e.openBlock(),e.createBlock(n,{key:0},{default:e.withCtx(()=>[e.renderSlot(t.$slots,"default")]),_:3})):e.renderSlot(t.$slots,"default",{key:1})}}});module.exports=l;
