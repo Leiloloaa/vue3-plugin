@@ -14,41 +14,52 @@ const isSupportWebp = (() => {
 })()
 const compress = isSupportWebp ? `?x-oss-process=image/format,webp` : ''
 function isImageFormatValid(src: string, useCDN: boolean) {
-  return src?.includes('.png') || (useCDN && src?.includes('https://cdn') && !src.includes('?x-oss-process=image'))
+  return src?.includes('.png') || (useCDN && src?.includes('https://cdn') && !src.includes('?x-oss-process=image'));
 }
 function getQualityValue(value?: number): number {
-  return Math.min(Math.max(Number(value), 1), 100)
+  return Math.min(Math.max(Number(value), 1), 100);
 }
 export default {
-  install(app: any, config: configType) {
-    const { useCDN = true, quality: configQuality, excludesName = [] } = config
-    const qualityValue = 'quality' in config ? getQualityValue(configQuality) : 80
-    const quality = `/quality,Q_${qualityValue}`
+  install(app: any, config: configType = { quality: 80, excludesName: [], useCDN: true }) {
+    const { useCDN = true, quality: configQuality, excludesName = [] } = config;
+    const qualityValue = getQualityValue(configQuality);
+    const quality = `/quality,Q_${qualityValue}`;
     const isAdd = (url: string) => {
-      return !excludesName.some((item) => url?.includes(String(item)))
-    }
+      return !excludesName.some(item => url?.includes(String(item)));
+    };
     app.mixin({
       created() {
         const modifyBackgroundImages = () => {
           Array.from(document.styleSheets).forEach((styleSheet) => {
-            const rules = styleSheet.rules || styleSheet.cssRules
-            if (!rules) return
-            Array.from(rules).forEach((rule: any) => {
-              const { style, selectorText } = rule
-              // 跳过包含 webp 和有 content 的规则
-              if (!style || style?.backgroundImage?.includes('webp') || style.content.includes('nowebp')) return
-              const imgFormat = isImageFormatValid(style?.backgroundImage, useCDN)
-              if (selectorText && imgFormat) {
-                const urlMatch = style.backgroundImage.match(/url\("?(.+?)"?\)/)
-                if (urlMatch?.[1] && isAdd(urlMatch[1])) {
-                  style.backgroundImage = `url(${urlMatch[1]}${compress}${quality})`
-                }
-              }
-            })
-          })
-        }
+            // 确保样式表是同源的
+            if (styleSheet.href && !styleSheet.href.startsWith(window.location.origin)) {
+              return; // 跳过跨域样式表
+            }
 
-        modifyBackgroundImages()
+            try {
+              const rules = styleSheet.rules || styleSheet.cssRules;
+              if (!rules) return;
+
+              Array.from(rules).forEach((rule: any) => {
+                const { style, selectorText } = rule;
+                // 跳过包含 webp 和有 content 的规则
+                if (!style || style.backgroundImage?.includes('webp') || style.content?.includes('nowebp')) return;
+
+                const imgFormat = isImageFormatValid(style.backgroundImage, useCDN);
+                if (selectorText && imgFormat) {
+                  const urlMatch = style.backgroundImage.match(/url\("?(.+?)"?\)/);
+                  if (urlMatch?.[1] && isAdd(urlMatch[1])) {
+                    style.backgroundImage = `url(${urlMatch[1]}${compress}${quality})`;
+                  }
+                }
+              });
+            } catch (error) {
+              console.info('无法访问样式表规则:', error);
+            }
+          });
+        };
+
+        modifyBackgroundImages();
       },
       mounted() {
         const modifyImgSrc = (vnode: any) => {
@@ -61,7 +72,7 @@ export default {
           // eslint-disable-next-line no-prototype-builtins
           const hasWebpProp = vnode.props?.hasOwnProperty('nowebp')
           const imgFormat = isImageFormatValid(imgSrc, useCDN)
-          const isWebpSupported = imgFormat && isSupportWebp && !hasWebpProp && !imgSrc?.includes('webp')
+          const isWebpSupported = imgFormat && isSupportWebp && !hasWebpProp && !imgSrc?.includes('webp');
           if (isImgTag && imgSrc && isWebpSupported && isAdd(imgSrc)) {
             const _compress = compress + quality
             vnode.el.src += _compress
@@ -94,17 +105,17 @@ export default {
     })
     app.directive('webp', {
       mounted(el: any) {
-        const _compress = `${compress}${quality}`
+        const _compress = `${compress}${quality}`;
         const handleError = () => {
           // 移除查询参数，恢复原始 src
-          el.src = el.src.split('?')[0]
-          el.removeEventListener('error', handleError)
-        }
-        el.addEventListener('error', handleError)
+          el.src = el.src.split('?')[0];
+          el.removeEventListener('error', handleError);
+        };
+        el.addEventListener('error', handleError);
         if (el.tagName === 'IMG' && !/webp$/.test(el.src)) {
           // 仅在 src 中没有特定参数时添加压缩参数
           if (!el.src.includes('?x-oss-process=image')) {
-            el.src += _compress
+            el.src += _compress;
           }
         }
       }
