@@ -2,6 +2,7 @@ import { getCurrentInstance } from 'vue'
 
 type configType = {
   quality?: number
+  suffix?: string[]
   excludesName?: string[]
   useCDN?: boolean
 }
@@ -13,17 +14,24 @@ const isSupportWebp = (() => {
   }
 })()
 const compress = isSupportWebp ? `?x-oss-process=image/format,webp` : ''
-function isImageFormatValid(src: string, useCDN: boolean) {
-  return src?.includes('.png') || (useCDN && src?.includes('https://cdn') && !src.includes('?x-oss-process=image'));
+function getImageExtension(src: string) {
+  // 使用正则表达式匹配文件后缀
+  const match = src.match(/\.(jpg|jpeg|png|gif|bmp|svg|webp)$/i);
+  return match ? match[0] : '';
+}
+function isImageFormatValid(src: string, suffix: string[], useCDN: boolean,) {
+  return src && isSupportWebp && (suffix.includes(getImageExtension(src)) || (useCDN && src?.includes('//cdn'))) && !src.includes('?x-oss-process=image') && !src?.includes('webp');
 }
 function getQualityValue(value?: number): number {
-  return Math.min(Math.max(Number(value), 1), 100);
+  return !value ? 0 : Math.min(Math.max(Number(value), 1), 100);
 }
 export default {
-  install(app: any, config: configType = { quality: 80, excludesName: [], useCDN: true }) {
-    const { useCDN = true, quality: configQuality, excludesName = [] } = config;
+  install(app: any, config: configType = { quality: 0, suffix: [], excludesName: [], useCDN: true }) {
+    const { quality: configQuality, suffix = [], excludesName = [], useCDN = true } = config;
+    const suffixArray = ['.png', ...suffix]
     const qualityValue = getQualityValue(configQuality);
-    const quality = `/quality,Q_${qualityValue}`;
+    // 添加 webp 支持判断，防止不支持机型添加质量参数 to: 解决 ios 14.5 以下版本不支持 webp 导致图片无法显示
+    const quality = qualityValue && isSupportWebp ? `/quality,Q_${qualityValue}` : '';
     const isAdd = (url: string) => {
       return !excludesName.some(item => url?.includes(String(item)));
     };
@@ -35,7 +43,7 @@ export default {
             if (styleSheet.href && !styleSheet.href.startsWith(window.location.origin)) {
               return; // 跳过跨域样式表
             }
-
+            // === 添加 try catch 防止样式表访问失败  to：解决 sentry 报错
             try {
               const rules = styleSheet.rules || styleSheet.cssRules;
               if (!rules) return;
@@ -43,9 +51,9 @@ export default {
               Array.from(rules).forEach((rule: any) => {
                 const { style, selectorText } = rule;
                 // 跳过包含 webp 和有 content 的规则
-                if (!style || style.backgroundImage?.includes('webp') || style.content?.includes('nowebp')) return;
-
-                const imgFormat = isImageFormatValid(style.backgroundImage, useCDN);
+                if (!style || !style.backgroundImage || style.backgroundImage?.includes('webp') || style.content?.includes('nowebp')) return;
+                const bgUrl = style.backgroundImage.match(/url\(["']?([^"']+)["']?\)/);
+                const imgFormat = isImageFormatValid(bgUrl ? bgUrl[1] : '', suffixArray, useCDN);
                 if (selectorText && imgFormat) {
                   const urlMatch = style.backgroundImage.match(/url\("?(.+?)"?\)/);
                   if (urlMatch?.[1] && isAdd(urlMatch[1])) {
@@ -63,26 +71,22 @@ export default {
       },
       mounted() {
         const modifyImgSrc = (vnode: any) => {
-          // console.log('vnode', vnode);
           if (!vnode) return
-
           // 处理 img 标签
-          const isImgTag = vnode.type === 'img'
           const imgSrc = vnode.el?.src
-          // eslint-disable-next-line no-prototype-builtins
-          const hasWebpProp = vnode.props?.hasOwnProperty('nowebp')
-          const imgFormat = isImageFormatValid(imgSrc, useCDN)
-          const isWebpSupported = imgFormat && isSupportWebp && !hasWebpProp && !imgSrc?.includes('webp');
-          if (isImgTag && imgSrc && isWebpSupported && isAdd(imgSrc)) {
-            const _compress = compress + quality
-            vnode.el.src += _compress
-
-            const handleError = () => {
-              vnode.el.src = imgSrc.replace(_compress, '')
-              vnode.el.removeEventListener('error', handleError)
+          if (vnode.type === 'img' && imgSrc) {
+            // eslint-disable-next-line no-prototype-builtins
+            const hasWebpProp = vnode.props?.hasOwnProperty('nowebp')
+            const imgFormat = isImageFormatValid(imgSrc, suffixArray, useCDN) && isSupportWebp && !hasWebpProp && !imgSrc?.includes('webp');
+            if (imgFormat && isAdd(imgSrc)) {
+              const _compress = compress + quality
+              vnode.el.src += _compress
+              const handleError = () => {
+                vnode.el.src = imgSrc.replace(_compress, '')
+                vnode.el.removeEventListener('error', handleError)
+              }
+              vnode.el.addEventListener('error', handleError)
             }
-
-            vnode.el.addEventListener('error', handleError)
           }
 
           const { subTree } = vnode.component || {}
@@ -91,6 +95,14 @@ export default {
             const queue = Array.isArray(subTree.children) ? subTree.children : [subTree]
 
             queue.forEach((child: any) => {
+              if (child.type === 'img' || (child.children && Array.isArray(child.children))) {
+                modifyImgSrc(child)
+              }
+            })
+          }
+
+          if (vnode.children && Array.isArray(vnode.children)) {
+            vnode.children.forEach((child: any) => {
               if (child.type === 'img' || (child.children && Array.isArray(child.children))) {
                 modifyImgSrc(child)
               }

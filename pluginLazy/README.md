@@ -38,6 +38,8 @@ also support transforming images to webp format.
 
 - 发布第一个版本，支持`img`懒加载、背景图懒加载和组件懒加载
 
-### 1.1.0
+...
 
-- 修改 readme
+### 2.0.0
+
+- 修改转换 webp 条件判断

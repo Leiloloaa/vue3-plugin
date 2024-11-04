@@ -17,7 +17,8 @@ import pluginToWebp from 'plugin-to-webp'
 
 // 或者添加配置项
 createApp(App).use(pluginToWebp, {
-    quality: 60, // 压缩质量，默认 80
+    quality: 60, // 压缩质量，默认不加压缩后缀
+    suffix: [], // 需要转换的后缀名，默认 ['png']
     excludesName: ['pc-bg.png','mobile-bg.png'], // 不转换的图片名称
     // useCDN: false, // 是否处理 cdn 图，默认 true
 }).mount('#app')
@@ -72,3 +73,11 @@ createApp(App).use(pluginToWebp, {
 ### 3.0.3
 
 - 优化低版本机型 styleSheet sentry 报错，加上 try catch。
+
+### 3.0.4
+
+- 解决 ios 14 以下版本 webp 格式图片不显示的问题。
+
+### 3.0.5
+
+- 修改 readme

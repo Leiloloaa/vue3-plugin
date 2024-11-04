@@ -1,6 +1,6 @@
 {
   "name": "plugin-to-webp",
-  "version": "3.0.3",
+  "version": "3.0.5",
   "description": "png 转换 webp 格式图片",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
